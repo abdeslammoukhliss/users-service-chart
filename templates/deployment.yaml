@@ -33,8 +33,7 @@ spec:
     spec:
       restartPolicy: Always
       imagePullSecrets:
-        {{.Values.imagePullSecrets.name | default ""}}
-      {{- end }}
+        - name: {{.Values.imagePullSecrets.name | default ""}}
       serviceAccountName: {{ include "users-services.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
@@ -133,7 +132,7 @@ spec:
       volumes:
         - name: logging
           configMap:
-            name: {{ include "users-services.fullname" . }}
+            name: {{ include "users-services.fullname" .}}
             items:
               - key: "logging.yaml"
                 path: logging.yaml
