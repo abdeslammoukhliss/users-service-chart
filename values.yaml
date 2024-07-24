@@ -1,0 +1,228 @@
+# Default values for spring-boot-microservice.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+appVersion: 0.0.1
+
+replicaCount: 3
+namespace: default
+image:
+  repository: abdomokh/users-service
+  pullPolicy: Always
+  tag: latest
+
+imagePullSecrets:
+  name: my-registry-secret
+  data: eyJhdXRocyI6eyJodHRwczovL2luZGV4LmRvY2tlci5pby92MS8iOnsidXNlcm5hbWUiOiJhYmRvbW9raCIsInBhc3N3b3JkIjoiZGNrcl9wYXRfU0E4NVhrRTNXY0hvZ1U2MHhXalhFUF94ek1rIiwiZW1haWwiOiJhYmRvbW9raDM4QGdtYWlsLmNvbSIsImF1dGgiOiJZV0prYjIxdmEyZzZaR05yY2w5d1lYUmZVMEU0TlZoclJUTlhZMGh2WjFVMk1IaFhhbGhGVUY5NGVrMXIifX19
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+annotations:
+  prometheus.io/scrape: "true"
+
+podAnnotations:
+  sidecar.istio.io/inject: "true"
+
+selectorLabels:
+  app: users-service
+
+podSecurityContext:
+  fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+logging:
+  volume:
+    enabled: true
+    name: logging-volume
+    size: 1Gi
+    storageClassName: standard
+    mountPath: /etc/config/app/logging.yaml
+    subPath: logging.yaml
+    readOnly: true
+
+service:
+  enabled: true
+  type: ClusterIP
+  httpPort: 8080
+  httpTargetPort: "8080"
+  httpNodePort: null
+  managementPort: 9090
+  managementTargetPort: "9090"
+  managementNodePort: null
+  labels:
+    prometheus.io/target: spring-boot-actuator-instance
+
+extraEnv:
+  - name: SPRING_PROFILES_ACTIVE
+    value: "prod"
+  - name : DATABASE_URL
+    value: "jdbc:h2:mem:users-db"
+
+podLabels:
+  app: users-service
+labels:
+  app: users-service
+
+
+secret:
+  values:
+    - name: username
+      value: c2E=
+    - name: password
+      value: ""
+
+docker:
+  secretName: docker-registry
+
+
+envFrom:
+  - configMapRef:
+      name: configmap
+  - secretRef:
+      name: secret
+
+config:
+  annotations: {}
+  labels: {}
+  log4j: |-
+    Configuration:
+      Appenders:
+        Console:
+          name: Console
+          target: SYSTEM_OUT
+          JsonLayout:
+            compact: true
+            eventEol: true
+            includeTimeMillis: true
+
+      Loggers:
+        Root:
+          level: INFO
+          AppenderRef:
+            - ref: Console
+  application: |-
+    spring:
+      datasource:
+        url: jdbc:h2:mem:users-db
+        username: sa
+        password: password
+    server:
+      port: 8080
+
+
+command:
+#  - "java"
+#  - "-jar"
+#  - "/app.jar"
+
+args:
+#  - "--spring.config.location=/etc/config/app/application.yaml"
+
+jvmOptions:
+  - -XX:+UseContainerSupport
+  - -XX:MaxRAMPercentage=80.0
+  - -Djava.net.preferIPv4Stack=true
+  - -Djava.awt.headless=true
+  - -Dspring.config.additional-location=/etc/config/app/application.yaml
+
+ingress:
+  enabled: false
+  annotations: {}
+  hosts:
+    - host: example.com
+      paths:
+        - /
+  tls:
+    - secretName: example-tls
+      hosts:
+        - example.com
+
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 9090
+  failureThreshold: 60
+  periodSeconds: 60
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 9090
+  failureThreshold: 10
+  periodSeconds: 60
+
+startupProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 9090
+  failureThreshold: 10
+  initialDelaySeconds: 60
+  periodSeconds: 60
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+extraVolumeMounts:
+#  - name: extra-config
+#    mountPath: /etc/config/extra
+#    readOnly: true
+
+extraVolumes:
+#  - name: extra-config
+#    configMap:
+#      name: extra-configmap
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector:
+#  role: frontend
+
+tolerations:
+  - key: "key"
+    operator: "Equal"
+    value: "value"
+    effect: "NoSchedule"
+
+affinity:
+  podAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: "app"
+              operator: "In"
+              values:
+                - "users-service"
+        topologyKey: "kubernetes.io/hostname"
+
+metricsConfig:
+  enabled: true
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+  labels: {}
+  interval: 30s
+  scrapeTimeout: 30s
+  path: /actuator/prometheus
+  port: http-management

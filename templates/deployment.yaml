@@ -122,14 +122,13 @@ spec:
               mountPath: /etc/config/app/logging.yaml
               readOnly: true
               subPath: logging.yaml
+          {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
             - name: application
               mountPath: /etc/config/app/application.yaml
               readOnly: true
               subPath: application.yaml
-          {{- with .Values.extraVolumeMounts }}
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-
       volumes:
         - name: logging
           configMap:
